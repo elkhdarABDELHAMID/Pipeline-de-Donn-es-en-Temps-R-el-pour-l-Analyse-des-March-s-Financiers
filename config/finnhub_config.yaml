@@ -1,0 +1,13 @@
+finnhub:
+  api_key: "d031o4hr01qi6jgk0750d031o4hr01qi6jgk075g"
+  rest_endpoint: "https://finnhub.io/api/v1"
+  websocket_endpoint: "wss://ws.finnhub.io"
+  websocket_trace: False
+  #kafka_bootstrap_servers: "kafka:9092"
+  kafka_bootstrap_servers: "localhost:29092"
+  symbols:
+    - "AAPL"
+    - "AMZN"
+    - "BINANCE:BTCUSDT"
+    - "IC MARKETS:1"
+

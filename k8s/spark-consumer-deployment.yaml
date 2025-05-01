@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-consumer
+  template:
+    metadata:
+      labels:
+        app: spark-consumer
+    spec:
+      containers:
+      - name: spark-consumer
+        image: custom-spark-consumer:3.5.1
+        command: ["/opt/spark/bin/spark-submit"]
+        args: ["/app/spark-consumer-test.py"]
+        volumeMounts:
+        - name: app-code
+          mountPath: /app/spark-consumer-test.py
+          subPath: spark-consumer-test.py
+        - name: checkpoint-dir
+          mountPath: /opt/spark-data/checkpoints
+      volumes:
+      - name: app-code
+        configMap:
+          name: spark-consumer-code
+      - name: checkpoint-dir
+        emptyDir: {}

@@ -1,0 +1,58 @@
+## commande pour charger fetch les donnees
+python -m scripts.run_finnhub_producer
+
+
+
+rm -rf zookeeper-data
+rm -rf kafka-data
+rm -rf cassandra-data
+
+# commande kafka
+
+docker exec -it .... bash
+kafka-configs --bootstrap-server kafka:9092 --describe --topic raw_financial_data
+## pour sauvgarder les donnees 7 jours
+kafka-configs --bootstrap-server kafka:9092 --alter --topic raw_financial_data --add-config retention.ms=604800000
+
+
+#  pour lister les topic
+kafka-topics --bootstrap-server kafka:9092 --list
+
+
+# pour supprimer checkpoints(offset)
+rm -rf /opt/spark-data/checkpoints/*
+
+## 
+chown -R 1001:1001 /opt/spark-data/checkpoints
+chmod -R 755 /opt/spark-data/checkpoints
+chmod -R 777 /opt/spark-data/checkpoints
+
+# pour la producer de la topic raw_financial_data
+kafka-console-consumer --bootstrap-server kafka:9092 --topic raw_financial_data --from-beginning
+
+
+
+# spark commande
+docker exec -it fintech-pipeline-spark-1 bash
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,com.datastax.spark:spark-cassandra-connector_2.12:3.5.0 /opt/spark-apps/spark_consumer.py
+
+
+# cassandra
+docker exec -it fintech-pipeline-cassandra-1 cqlsh
+
+SELECT * FROM fintech.aggregated_trades LIMIT 10;
+
+
+# grafana
+
+SELECT window_end AS time, symbol, avg_price
+FROM fintech.aggregated_trades_by_symbol
+WHERE symbol IN ('AAPL', 'BINANCE:BTCUSDT')
+AND window_end >= '2025-04-21 15:24:40'
+AND window_end <= '2025-04-29 12:54:35';
+
+
+
+## raw_
+SELECT *FROM fintech.raw_trades
+WHERE symbol IN ('AAPL', 'BINANCE:BTCUSDT');

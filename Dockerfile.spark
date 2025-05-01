@@ -1,0 +1,6 @@
+# /home/green/Desktop/fintech-pipeline/Dockerfile.spark
+FROM bitnami/spark:3.5.1
+USER root
+COPY ./src /opt/spark-apps
+RUN chown -R 1000:1000 /opt/spark-apps
+USER 1000

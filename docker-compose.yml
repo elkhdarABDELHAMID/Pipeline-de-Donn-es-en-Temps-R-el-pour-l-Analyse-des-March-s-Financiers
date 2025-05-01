@@ -1,0 +1,92 @@
+version: '3.8'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - kafka-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "29092:29092"
+    networks:
+      - kafka-net
+
+  spark:
+    image: bitnami/spark:3.5.1
+    container_name: fintech-pipeline-spark-1
+    ports:
+      - "8080:8080"
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    volumes:
+      - ./src:/opt/spark-apps
+      - ./spark-data:/opt/spark-data
+    command: >
+      bash -c "mkdir -p /opt/spark-data/checkpoints /opt/spark-data/checkpoints_raw /opt/spark-data/checkpoints_aggregated && chown -R 1001:1001 /opt/spark-data && chmod -R 775 /opt/spark-data && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
+    networks:
+      - kafka-net
+
+  spark-worker:
+    image: bitnami/spark:3.5.1
+    container_name: fintech-pipeline-spark-worker-1
+    depends_on:
+      - spark
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_CORES=2
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    command: >
+      bash -c "mkdir -p /opt/spark-data/checkpoints /opt/spark-data/checkpoints_raw /opt/spark-data/checkpoints_aggregated && chown -R 1001:1001 /opt/spark-data && chmod -R 775 /opt/spark-data && /opt/bitnami/scripts/spark/entrypoint.sh /opt/bitnami/scripts/spark/run.sh"
+    networks:
+      - kafka-net
+
+    
+  cassandra:
+    image: cassandra:4.1
+    container_name: fintech-pipeline-cassandra-1
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=fintech-cluster
+    volumes:
+      - ./cassandra-data:/var/lib/cassandra
+      - ./storage/cassandra-setup.cql:/cassandra-setup.cql
+    networks:
+      - kafka-net
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=hadesarchitect-cassandra-datasource
+    networks:
+      - kafka-net
+
+networks:
+  kafka-net:
+    driver: bridge
